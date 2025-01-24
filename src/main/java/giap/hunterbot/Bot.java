@@ -4,15 +4,20 @@ import io.github.cdimascio.dotenv.Dotenv;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.CopyMessage;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
-import org.telegram.telegrambots.meta.api.objects.Message;
+import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
+import org.telegram.telegrambots.meta.api.objects.File;
+import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 
 public class Bot extends TelegramLongPollingBot {
 
     private static final Dotenv dotenv = Dotenv.load();
-
-    private boolean screaming = false;
 
 
     @Override
@@ -31,29 +36,65 @@ public class Bot extends TelegramLongPollingBot {
         var user = msg.getFrom();
         var id = user.getId();
 
-
         if (msg.isCommand()) {
-            System.out.println(msg.getText().equals("/scream"));
-            System.out.println(msg.getText().equals("/whisper"));
-            if (msg.getText().equals("/scream")) {         // If the command was /scream, we switch gears
-                screaming = true;
-            } else if (msg.getText().equals("/whisper")) { // Otherwise, we return to normal
-                screaming = false;
+
+            switch (msg.getText()) {
+                case "/start":
+                    startConversation(id);
+                    return;
+                case "/time":
+                    var date = msg.getDate();
+                    String convertedTime = changeTime(date);
+                    sendText(id, convertedTime);
+                    return;
+                default:
+                    sendText(id, "I don't understand this command");
+                    return;
             }
         }
 
-        if (screaming) {
-            scream(id, update.getMessage());
-        } else {
-            sendText(id, "thoiii");
+        sendPhotoByURL(id, "https://images2.thanhnien.vn/528068263637045248/2023/4/23/edit-truc-anh-16822518118551137084698.png");
+        sendText(id, "thoiii");
+
+    }
+
+    private void sendPhotoByURL(Long id, String url) {
+        SendPhoto sp = SendPhoto.builder()
+                .chatId(id.toString())
+                .photo(new InputFile(url))
+                .caption("This is a photo")
+                .build();
+        try {
+            execute(sp);
+        } catch (TelegramApiException e) {
+            throw new RuntimeException(e);
         }
     }
 
-    private void scream(Long id, Message msg) {
-        if (msg.hasText())
-            sendText(id, msg.getText().toUpperCase());
-        else
-            copyMessage(id, msg.getMessageId());  //We can't really scream a sticker
+//    private void sendPhotoByInputFile(Long id, String photoPath) {
+//        SendPhoto sp = SendPhoto.builder()
+//                .chatId(id.toString())
+//                .photo(new InputFile(new java.io.File(photoPath)))
+//                .caption("Ảnh từ file cục bộ")
+//                .build();
+//        try {
+//            execute(sp);
+//        } catch (TelegramApiException e) {
+//            throw new RuntimeException(e);
+//        }
+//    }
+
+
+    private String changeTime(int date) {
+        Instant instant = Instant.ofEpochSecond(date);
+        ZonedDateTime dateTime = instant.atZone(ZoneId.systemDefault());
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+        return dateTime.format(formatter);
+    }
+
+    private void startConversation(Long id) {
+        sendText(id, "Hello there! How are you doing?");
     }
 
     public void sendText(Long who, String what) {
